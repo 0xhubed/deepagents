@@ -1,0 +1,76 @@
+# DeepAgents Docker Compose Configuration
+# Simplifies running the agent with proper volume mounts and environment
+
+services:
+  deepagents:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: deepagents-cli:latest
+    container_name: deepagents-agent
+
+    # Interactive mode - required for CLI
+    stdin_open: true
+    tty: true
+
+    # Mount Windows workspace into container
+    volumes:
+      # Main workspace - change left side to your Windows path
+      - C:\agent-workspace:/workspace
+
+      # Optional: Mount additional directories as needed
+      # - C:\projects:/projects:ro  # Read-only access to other projects
+
+    # Environment variables from .env file
+    env_file:
+      - .env
+
+    # Network settings - use host network for easy access to Ollama
+    # On Windows with Docker Desktop, this uses a special DNS name
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Working directory inside container
+    working_dir: /workspace
+
+    # Override default command for interactive use
+    entrypoint: ["deepagents"]
+    command: []
+
+    # Resource limits (optional - adjust as needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+
+  # Optional: Excel to CSV converter service
+  convert-excel:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: deepagents-cli:latest
+    volumes:
+      - C:\agent-workspace:/workspace
+    entrypoint: ["python", "-c"]
+    command: |
+      "
+      import pandas as pd
+      import sys
+      from pathlib import Path
+
+      input_dir = Path('/workspace/input')
+      output_dir = Path('/workspace/input/converted')
+      output_dir.mkdir(exist_ok=True)
+
+      for excel_file in input_dir.glob('*.xlsx'):
+          print(f'Converting {excel_file.name}...')
+          excel = pd.ExcelFile(excel_file)
+          for sheet in excel.sheet_names:
+              df = pd.read_excel(excel, sheet_name=sheet)
+              csv_name = f'{excel_file.stem}_{sheet}.csv' if len(excel.sheet_names) > 1 else f'{excel_file.stem}.csv'
+              df.to_csv(output_dir / csv_name, index=False)
+              print(f'  Created: {csv_name}')
+      print('Done!')
+      "
+    profiles:
+      - tools  # Only runs when explicitly called with --profile tools
