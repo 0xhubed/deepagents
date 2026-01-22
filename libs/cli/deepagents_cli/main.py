@@ -247,8 +247,8 @@ def parse_args() -> argparse.Namespace:
         "-M",
         "--model",
         metavar="MODEL",
-        help="Model to use (e.g., claude-sonnet-4-5-20250929, gpt-5.2). "
-        "Provider is auto-detected from model name.",
+        help="Model to use (e.g., claude-sonnet-4-5-20250929, gpt-5.2, ollama:llama3). "
+        "Provider is auto-detected from model name, or use explicit prefix (ollama:model-name).",
     )
 
     parser.add_argument(
