@@ -336,13 +336,16 @@ class Settings:
     # Google Cloud configuration (for VertexAI)
     google_cloud_project: str | None
 
+    # Ollama configuration
+    ollama_base_url: str | None  # Base URL for Ollama server (e.g., http://localhost:11434)
+
     # LangSmith configuration
     deepagents_langchain_project: str | None  # For deepagents agent tracing
     user_langchain_project: str | None  # Original LANGSMITH_PROJECT for user code
 
     # Model configuration
     model_name: str | None = None  # Currently active model name
-    model_provider: str | None = None  # Provider (openai, anthropic, google)
+    model_provider: str | None = None  # Provider (openai, anthropic, google, ollama)
     model_context_limit: int | None = None  # Max input tokens from model profile
 
     # Project information
@@ -365,6 +368,9 @@ class Settings:
         tavily_key = os.environ.get("TAVILY_API_KEY")
         google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT")
 
+        # Detect Ollama configuration (OLLAMA_BASE_URL or OLLAMA_HOST)
+        ollama_base_url = os.environ.get("OLLAMA_BASE_URL") or os.environ.get("OLLAMA_HOST")
+
         # Detect LangSmith configuration
         # DEEPAGENTS_LANGSMITH_PROJECT: Project for deepagents agent tracing
         # user_langchain_project: User's ORIGINAL LANGSMITH_PROJECT (before override)
@@ -382,6 +388,7 @@ class Settings:
             google_api_key=google_key,
             tavily_api_key=tavily_key,
             google_cloud_project=google_cloud_project,
+            ollama_base_url=ollama_base_url,
             deepagents_langchain_project=deepagents_langchain_project,
             user_langchain_project=user_langchain_project,
             project_root=project_root,
@@ -411,6 +418,11 @@ class Settings:
         VertexAI.
         """
         return self.google_cloud_project is not None and self.google_api_key is None
+
+    @property
+    def has_ollama(self) -> bool:
+        """Check if Ollama base URL is configured."""
+        return self.ollama_base_url is not None
 
     @property
     def has_tavily(self) -> bool:
@@ -673,30 +685,44 @@ def get_default_coding_instructions() -> str:
     return default_prompt_path.read_text()
 
 
-def _detect_provider(model_name: str) -> str | None:
+def _detect_provider(model_name: str) -> tuple[str | None, str]:
     """Auto-detect provider from model name.
 
+    Supports explicit provider prefixes (e.g., "ollama:llama3") or auto-detection
+    from model name patterns.
+
     Args:
-        model_name: Model name to detect provider from
+        model_name: Model name to detect provider from (may include provider prefix)
 
     Returns:
-        Provider name (openai, anthropic, google, vertexai) or None if can't detect
+        Tuple of (provider name, model name without prefix).
+        Provider is one of: openai, anthropic, google, vertexai, ollama, or None if can't detect.
     """
+    # Check for explicit provider prefix (e.g., "ollama:llama3", "openai:gpt-4")
+    if ":" in model_name:
+        prefix, actual_model = model_name.split(":", 1)
+        prefix_lower = prefix.lower()
+        if prefix_lower in ("ollama", "openai", "anthropic", "google", "vertexai"):
+            return prefix_lower, actual_model
+
+    # Auto-detect from model name patterns
     model_lower = model_name.lower()
 
     # Check for model name patterns
     if any(x in model_lower for x in ["gpt", "o1", "o3"]):
-        return "openai"
+        return "openai", model_name
     if "claude" in model_lower:
         if not settings.has_anthropic and settings.has_vertex_ai:
-            return "vertexai"
-        return "anthropic"
+            return "vertexai", model_name
+        return "anthropic", model_name
     if "gemini" in model_lower:
         if settings.has_vertex_ai:
-            return "vertexai"
-        return "google"
-
-    return None
+            return "vertexai", model_name
+        return "google", model_name
+    # Common Ollama model patterns
+    if any(x in model_lower for x in ["llama", "mistral", "codellama", "deepseek", "qwen", "phi"]):
+        return "ollama", model_name
+    return None, model_name
 
 
 def create_model(model_name_override: str | None = None) -> BaseChatModel:
@@ -705,18 +731,19 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
     Uses the global settings instance to determine which model to create.
 
     Args:
-        model_name_override: Optional model name to use instead of environment variable
+        model_name_override: Optional model name to use instead of environment variable.
+            Supports explicit provider prefix (e.g., "ollama:llama3", "openai:gpt-4").
 
     Returns:
-        ChatModel instance (OpenAI, Anthropic, or Google)
+        ChatModel instance (OpenAI, Anthropic, Google, or Ollama)
 
     Raises:
-        SystemExit if no API key is configured or model provider can't be determined
+        SystemExit if no API key/URL is configured or model provider can't be determined
     """
     # Determine provider and model
     if model_name_override:
         # Use provided model, auto-detect provider
-        provider = _detect_provider(model_name_override)
+        provider, model_name = _detect_provider(model_name_override)
         if not provider:
             console.print(
                 "[bold red]Error:[/bold red] Could not detect provider "
@@ -730,6 +757,13 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
                 "  - VertexAI: claude-*/gemini-* (requires GOOGLE_CLOUD_PROJECT, "
                 "uses Application Default Credentials)"
             )
+            console.print("  - Ollama: llama*, mistral*, codellama*, deepseek*, qwen*, phi*")
+            console.print("\nOr use explicit provider prefix:")
+            console.print("  - ollama:model-name  (e.g., ollama:llama3)")
+            console.print("  - openai:model-name")
+            console.print("  - anthropic:model-name")
+            console.print("  - google:model-name")
+            console.print("  - vertexai:model-name")
             sys.exit(1)
 
         # Check if credentials for detected provider are available
@@ -760,9 +794,18 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
             console.print("Also ensure you have authenticated with:")
             console.print("  gcloud auth application-default login")
             sys.exit(1)
-
-        model_name = model_name_override
-    # Use environment variable defaults, detect provider by API key priority
+        elif provider == "ollama" and not settings.has_ollama:
+            console.print(
+                f"[bold red]Error:[/bold red] Model '{model_name_override}' requires OLLAMA_BASE_URL"
+            )
+            console.print("\nExample:")
+            console.print("  export OLLAMA_BASE_URL=http://your-ollama-server:11434")
+            sys.exit(1)
+    # Use environment variable defaults, detect provider by API key/URL priority
+    elif settings.has_ollama:
+        # Ollama takes priority if configured (for local LLM users)
+        provider = "ollama"
+        model_name = os.environ.get("OLLAMA_MODEL", "llama3")
     elif settings.has_openai:
         provider = "openai"
         model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
@@ -776,8 +819,9 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
         provider = "vertexai"
         model_name = os.environ.get("VERTEX_AI_MODEL", "gemini-3-pro-preview")
     else:
-        console.print("[bold red]Error:[/bold red] No credentials configured.")
+        console.print("[bold red]Error:[/bold red] No API key or Ollama URL configured.")
         console.print("\nPlease set one of the following environment variables:")
+        console.print("  - OLLAMA_BASE_URL    (for local Ollama models, e.g., http://localhost:11434)")
         console.print("  - OPENAI_API_KEY     (for OpenAI models like gpt-5.2)")
         console.print("  - ANTHROPIC_API_KEY  (for Claude models)")
         console.print("  - GOOGLE_API_KEY     (for Google Gemini models)")
@@ -785,8 +829,9 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
             "  - GOOGLE_CLOUD_PROJECT (for VertexAI models, "
             "with Application Default Credentials)"
         )
-        console.print("\nExample:")
-        console.print("  export OPENAI_API_KEY=your_api_key_here")
+        console.print("\nExample for Ollama:")
+        console.print("  export OLLAMA_BASE_URL=http://your-server:11434")
+        console.print("  export OLLAMA_MODEL=llama3  # optional, defaults to llama3")
         console.print("\nOr add it to your .env file.")
         sys.exit(1)
 
@@ -851,6 +896,13 @@ def create_model(model_name_override: str | None = None) -> BaseChatModel:
                 temperature=0,
                 max_tokens=None,
             )
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+
+        model = ChatOllama(
+            model=model_name,
+            base_url=settings.ollama_base_url,
+        )
     else:
         # Should not reach here due to earlier validation
         console.print(f"[bold red]Error:[/bold red] Unknown provider: {provider}")

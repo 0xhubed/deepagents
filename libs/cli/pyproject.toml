@@ -29,6 +29,7 @@ dependencies = [
   "deepagents==0.3.10",
   "langchain>=1.2.7,<2.0.0",
   "langchain-openai>=1.1.7,<2.0.0",
+  "langchain-ollama>=0.3.0,<1.0.0",
   "langgraph-checkpoint-sqlite>=3.0.0,<4.0.0",
 
   # UI/Terminal
