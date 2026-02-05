@@ -21,7 +21,7 @@ WORKDIR /workspace
 # Install Python dependencies
 # Install deepagents-cli from local source (with Ollama support)
 COPY libs/deepagents /tmp/deepagents
-COPY libs/deepagents-cli /tmp/deepagents-cli
+COPY libs/cli /tmp/deepagents-cli
 
 RUN pip install /tmp/deepagents && \
     pip install /tmp/deepagents-cli && \
@@ -44,4 +44,3 @@ WORKDIR /workspace
 
 # Default command - run deepagents CLI
 ENTRYPOINT ["deepagents"]
-CMD ["--help"]

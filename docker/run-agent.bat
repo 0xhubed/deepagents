@@ -13,7 +13,7 @@ SET WORKSPACE=C:\agent-workspace
 
 REM Ollama server configuration
 SET OLLAMA_BASE_URL=http://10.8.137.71:11435
-SET OLLAMA_MODEL=gpt-oss:20b
+SET OLLAMA_MODEL=GLM-4.7-flash
 
 REM ============================================
 REM DO NOT EDIT BELOW THIS LINE
@@ -46,23 +46,19 @@ IF NOT EXIST "%WORKSPACE%" (
     echo.
 )
 
-REM Check if image exists, build if not
-docker image inspect deepagents-cli:latest >nul 2>&1
+REM Build image (uses cache if unchanged)
+echo Building Docker image (cached if unchanged)...
+echo.
+cd /d "%~dp0"
+docker build -t deepagents-cli:latest -f Dockerfile ..
 IF ERRORLEVEL 1 (
-    echo Docker image not found. Building...
-    echo This may take a few minutes on first run.
-    echo.
-    cd /d "%~dp0"
-    docker-compose build
-    IF ERRORLEVEL 1 (
-        echo [ERROR] Failed to build Docker image!
-        pause
-        exit /b 1
-    )
-    echo.
-    echo Build complete!
-    echo.
+    echo [ERROR] Failed to build Docker image!
+    pause
+    exit /b 1
 )
+echo.
+echo Build complete!
+echo.
 
 REM Display configuration
 echo Configuration:
