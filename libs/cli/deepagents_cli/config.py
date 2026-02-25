@@ -232,35 +232,33 @@ def reset_glyphs_cache() -> None:
 # Text art banners (Unicode and ASCII variants)
 
 _UNICODE_BANNER = f"""
-██████╗  ███████╗ ███████╗ ██████╗    ▄▓▓▄
-██╔══██╗ ██╔════╝ ██╔════╝ ██╔══██╗  ▓•███▙
-██║  ██║ █████╗   █████╗   ██████╔╝  ░▀▀████▙▖
-██║  ██║ ██╔══╝   ██╔══╝   ██╔═══╝      █▓████▙▖
-██████╔╝ ███████╗ ███████╗ ██║          ▝█▓█████▙
-╚═════╝  ╚══════╝ ╚══════╝ ╚═╝           ░▜█▓████▙
-                                          ░█▀█▛▀▀▜▙▄
-                                        ░▀░▀▒▛░░  ▝▀▘
+██╗      ███████╗  ██████╗  ███╗   ██╗ ████████╗ ███████╗  ██████╗
+██║      ██╔════╝ ██╔═══██╗ ████╗  ██║ ╚══██╔══╝ ██╔════╝ ██╔═══██╗
+██║      █████╗   ██║   ██║ ██╔██╗ ██║    ██║    █████╗   ██║   ██║
+██║      ██╔══╝   ██║   ██║ ██║╚██╗██║    ██║    ██╔══╝   ██║▄▄ ██║
+███████╗ ███████╗ ╚██████╔╝ ██║ ╚████║    ██║    ███████╗  ╚██████╔╝
+╚══════╝ ╚══════╝  ╚═════╝  ╚═╝  ╚═══╝    ╚═╝    ╚══════╝   ╚══▀▀═╝
 
- █████╗   ██████╗  ███████╗ ███╗   ██╗ ████████╗ ███████╗
-██╔══██╗ ██╔════╝  ██╔════╝ ████╗  ██║ ╚══██╔══╝ ██╔════╝
-███████║ ██║  ███╗ █████╗   ██╔██╗ ██║    ██║    ███████╗
-██╔══██║ ██║   ██║ ██╔══╝   ██║╚██╗██║    ██║    ╚════██║
-██║  ██║ ╚██████╔╝ ███████╗ ██║ ╚████║    ██║    ███████║
-╚═╝  ╚═╝  ╚═════╝  ╚══════╝ ╚═╝  ╚═══╝    ╚═╝    ╚══════╝
+ █████╗   ██████╗  ███████╗ ███╗   ██╗ ████████╗
+██╔══██╗ ██╔════╝  ██╔════╝ ████╗  ██║ ╚══██╔══╝
+███████║ ██║  ███╗ █████╗   ██╔██╗ ██║    ██║
+██╔══██║ ██║   ██║ ██╔══╝   ██║╚██╗██║    ██║
+██║  ██║ ╚██████╔╝ ███████╗ ██║ ╚████║    ██║
+╚═╝  ╚═╝  ╚═════╝  ╚══════╝ ╚═╝  ╚═══╝    ╚═╝
                                                   v{__version__}
 """
 _ASCII_BANNER = f"""
- ____  ____  ____  ____
-|  _ \\| ___|| ___||  _ \\
-| | | | |_  | |_  | |_) |
-| |_| |  _| |  _| |  __/
-|____/|____||____||_|
+ _     ____  ___  _   _ _____ ____  ___
+| |   | ___||   || \\ | |_   _| ___||   |
+| |   | |_  | | ||  \\| | | | | |_  | | |
+| |__ |  _| | |_|| |\\  | | | |  _| | |_|
+|____||____||___||_| \\_| |_| |____||___|
 
-    _    ____  ____  _   _  _____  ____
-   / \\  / ___|| ___|| \\ | ||_   _|/ ___|
-  / _ \\| |  _ | |_  |  \\| |  | |  \\___ \\
- / ___ \\ |_| ||  _| | |\\  |  | |   ___) |
-/_/   \\_\\____||____||_| \\_|  |_|  |____/
+    _    ____  ____  _   _  _____
+   / \\  / ___|| ___|| \\ | ||_   _|
+  / _ \\| |  _ | |_  |  \\| |  | |
+ / ___ \\ |_| ||  _| | |\\  |  | |
+/_/   \\_\\____||____||_| \\_|  |_|
                                   v{__version__}
 """
 
@@ -438,6 +436,16 @@ class Settings:
     # Ollama configuration
     ollama_base_url: str | None  # Base URL for Ollama server (e.g., http://localhost:11434)
 
+    # JIRA configuration
+    jira_url: str | None
+    jira_username: str | None
+    jira_password: str | None
+
+    # Confluence configuration
+    confluence_url: str | None
+    confluence_username: str | None
+    confluence_password: str | None
+
     # LangSmith configuration
     deepagents_langchain_project: str | None  # For deepagents agent tracing
     user_langchain_project: str | None  # Original LANGSMITH_PROJECT for user code
@@ -449,6 +457,10 @@ class Settings:
 
     # Project information
     project_root: Path | None = None
+
+    # SSL verification for on-prem services
+    jira_verify_ssl: bool = True
+    confluence_verify_ssl: bool = True
 
     # Shell command allow-list for auto-approval
     shell_allow_list: list[str] | None = None
@@ -472,6 +484,24 @@ class Settings:
 
         # Detect Ollama configuration (OLLAMA_BASE_URL or OLLAMA_HOST)
         ollama_base_url = os.environ.get("OLLAMA_BASE_URL") or os.environ.get("OLLAMA_HOST")
+
+        # Detect JIRA configuration
+        jira_url = os.environ.get("JIRA_URL")
+        jira_username = os.environ.get("JIRA_USERNAME")
+        jira_password = os.environ.get("JIRA_PASSWORD")
+
+        # Detect Confluence configuration (falls back to JIRA credentials)
+        confluence_url = os.environ.get("CONFLUENCE_URL")
+        confluence_username = os.environ.get("CONFLUENCE_USERNAME") or jira_username
+        confluence_password = os.environ.get("CONFLUENCE_PASSWORD") or jira_password
+
+        # SSL verification for on-prem (default True; set "false" to disable)
+        jira_verify_ssl = os.environ.get(
+            "JIRA_VERIFY_SSL", "true",
+        ).lower() not in ("false", "0", "no")
+        confluence_verify_ssl = os.environ.get(
+            "CONFLUENCE_VERIFY_SSL", "true",
+        ).lower() not in ("false", "0", "no")
 
         # Detect LangSmith configuration
         # DEEPAGENTS_LANGSMITH_PROJECT: Project for deepagents agent tracing
@@ -497,6 +527,14 @@ class Settings:
             tavily_api_key=tavily_key,
             google_cloud_project=google_cloud_project,
             ollama_base_url=ollama_base_url,
+            jira_url=jira_url,
+            jira_username=jira_username,
+            jira_password=jira_password,
+            confluence_url=confluence_url,
+            confluence_username=confluence_username,
+            confluence_password=confluence_password,
+            jira_verify_ssl=jira_verify_ssl,
+            confluence_verify_ssl=confluence_verify_ssl,
             deepagents_langchain_project=deepagents_langchain_project,
             user_langchain_project=user_langchain_project,
             project_root=project_root,
@@ -537,6 +575,20 @@ class Settings:
     def has_tavily(self) -> bool:
         """Check if Tavily API key is configured."""
         return self.tavily_api_key is not None
+
+    @property
+    def has_jira(self) -> bool:
+        """Check if JIRA is configured (URL + credentials)."""
+        return bool(self.jira_url and self.jira_username and self.jira_password)
+
+    @property
+    def has_confluence(self) -> bool:
+        """Check if Confluence is configured (URL + credentials)."""
+        return bool(
+            self.confluence_url
+            and self.confluence_username
+            and self.confluence_password
+        )
 
     @property
     def has_deepagents_langchain_project(self) -> bool:
@@ -1091,11 +1143,9 @@ def _get_default_model_spec() -> str:
     """Get default model specification based on available credentials.
 
     Checks in order:
-
-<<<<<<< HEAD
     1. `[models].default` in config file (user's intentional preference).
     2. `[models].recent` in config file (last `/model` switch).
-    3. Auto-detection based on available API credentials.
+    3. Auto-detection based on available API credentials or Ollama URL.
 
     Returns:
         Model specification in provider:model format.
@@ -1110,6 +1160,9 @@ def _get_default_model_spec() -> str:
     if config.recent_model:
         return config.recent_model
 
+    if settings.has_ollama:
+        model = os.environ.get("OLLAMA_MODEL", "llama3")
+        return f"ollama:{model}"
     if settings.has_openai:
         model = os.environ.get("OPENAI_MODEL", "gpt-5.2")
         return f"openai:{model}"
@@ -1125,7 +1178,7 @@ def _get_default_model_spec() -> str:
 
     msg = (
         "No credentials configured. Please set one of: "
-        "ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, "
+        "OLLAMA_BASE_URL, ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, "
         "or GOOGLE_CLOUD_PROJECT"
     )
     raise ModelConfigError(msg)
@@ -1189,112 +1242,6 @@ def _create_model_from_class(
             "must be in module.path:ClassName format"
         )
         raise ModelConfigError(msg)
-=======
-    Args:
-        model_name_override: Optional model name to use instead of environment variable.
-            Supports explicit provider prefix (e.g., "ollama:llama3", "openai:gpt-4").
-
-    Returns:
-        ChatModel instance (OpenAI, Anthropic, Google, or Ollama)
-
-    Raises:
-        SystemExit if no API key/URL is configured or model provider can't be determined
-    """
-    # Determine provider and model
-    if model_name_override:
-        # Use provided model, auto-detect provider
-        provider, model_name = _detect_provider(model_name_override)
-        if not provider:
-            console.print(
-                "[bold red]Error:[/bold red] Could not detect provider "
-                f"from model name: {model_name_override}"
-            )
-            console.print("\nSupported model name patterns:")
-            console.print("  - OpenAI: gpt-*, o1-*, o3-*")
-            console.print("  - Anthropic: claude-*")
-            console.print("  - Google: gemini-* (requires GOOGLE_API_KEY)")
-            console.print(
-                "  - VertexAI: claude-*/gemini-* (requires GOOGLE_CLOUD_PROJECT, "
-                "uses Application Default Credentials)"
-            )
-            console.print("  - Ollama: llama*, mistral*, codellama*, deepseek*, qwen*, phi*")
-            console.print("\nOr use explicit provider prefix:")
-            console.print("  - ollama:model-name  (e.g., ollama:llama3)")
-            console.print("  - openai:model-name")
-            console.print("  - anthropic:model-name")
-            console.print("  - google:model-name")
-            console.print("  - vertexai:model-name")
-            sys.exit(1)
-
-        # Check if credentials for detected provider are available
-        if provider == "openai" and not settings.has_openai:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires OPENAI_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "anthropic" and not settings.has_anthropic:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires ANTHROPIC_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "google" and not settings.has_google:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires GOOGLE_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "vertexai" and not settings.has_vertex_ai:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' requires "
-                "GOOGLE_CLOUD_PROJECT to be set"
-            )
-            console.print("\nPlease set GOOGLE_CLOUD_PROJECT environment variable.")
-            console.print("Also ensure you have authenticated with:")
-            console.print("  gcloud auth application-default login")
-            sys.exit(1)
-        elif provider == "ollama" and not settings.has_ollama:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' requires OLLAMA_BASE_URL"
-            )
-            console.print("\nExample:")
-            console.print("  export OLLAMA_BASE_URL=http://your-ollama-server:11434")
-            sys.exit(1)
-    # Use environment variable defaults, detect provider by API key/URL priority
-    elif settings.has_ollama:
-        # Ollama takes priority if configured (for local LLM users)
-        provider = "ollama"
-        model_name = os.environ.get("OLLAMA_MODEL", "llama3")
-    elif settings.has_openai:
-        provider = "openai"
-        model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
-    elif settings.has_anthropic:
-        provider = "anthropic"
-        model_name = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5-20250929")
-    elif settings.has_google:
-        provider = "google"
-        model_name = os.environ.get("GOOGLE_MODEL", "gemini-3-pro-preview")
-    elif settings.has_vertex_ai:
-        provider = "vertexai"
-        model_name = os.environ.get("VERTEX_AI_MODEL", "gemini-3-pro-preview")
-    else:
-        console.print("[bold red]Error:[/bold red] No API key or Ollama URL configured.")
-        console.print("\nPlease set one of the following environment variables:")
-        console.print("  - OLLAMA_BASE_URL    (for local Ollama models, e.g., http://localhost:11434)")
-        console.print("  - OPENAI_API_KEY     (for OpenAI models like gpt-5.2)")
-        console.print("  - ANTHROPIC_API_KEY  (for Claude models)")
-        console.print("  - GOOGLE_API_KEY     (for Google Gemini models)")
-        console.print(
-            "  - GOOGLE_CLOUD_PROJECT (for VertexAI models, "
-            "with Application Default Credentials)"
-        )
-        console.print("\nExample for Ollama:")
-        console.print("  export OLLAMA_BASE_URL=http://your-server:11434")
-        console.print("  export OLLAMA_MODEL=llama3  # optional, defaults to llama3")
-        console.print("\nOr add it to your .env file.")
-        sys.exit(1)
->>>>>>> 4819456 (feat: add Ollama support and Docker setup for Windows)
 
     module_path, class_name = class_path.rsplit(":", 1)
 
@@ -1344,6 +1291,22 @@ def _create_model_via_init(
         ModelConfigError: On import, value, or runtime errors.
     """
     try:
+        if provider == "ollama":
+            try:
+                from langchain_ollama import ChatOllama
+            except ImportError as e:
+                msg = (
+                    "Missing package for provider 'ollama'. Install: pip install langchain-ollama"
+                )
+                raise ModelConfigError(msg) from e
+
+            if "base_url" not in kwargs and settings.ollama_base_url:
+                kwargs["base_url"] = settings.ollama_base_url
+            if "base_url" not in kwargs:
+                msg = "OLLAMA_BASE_URL is required for Ollama models."
+                raise ModelConfigError(msg)
+            return ChatOllama(model=model_name, **kwargs)
+
         if provider:
             return init_chat_model(model_name, model_provider=provider, **kwargs)
         return init_chat_model(model_name, **kwargs)
@@ -1353,6 +1316,7 @@ def _create_model_via_init(
             "openai": "langchain-openai",
             "google_genai": "langchain-google-genai",
             "google_vertexai": "langchain-google-vertexai",
+            "ollama": "langchain-ollama",
         }
         package = package_map.get(provider, f"langchain-{provider}")
         msg = (
@@ -1455,17 +1419,7 @@ def create_model(
                 f"Invalid model spec '{model_spec}': model name is required "
                 "(e.g., 'anthropic:claude-sonnet-4-5' or 'claude-sonnet-4-5')"
             )
-<<<<<<< HEAD
             raise ModelConfigError(msg)
-=======
-    elif provider == "ollama":
-        from langchain_ollama import ChatOllama
-
-        model = ChatOllama(
-            model=model_name,
-            base_url=settings.ollama_base_url,
-        )
->>>>>>> 4819456 (feat: add Ollama support and Docker setup for Windows)
     else:
         # Bare model name — auto-detect provider or let init_chat_model infer
         model_name = model_spec

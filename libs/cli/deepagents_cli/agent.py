@@ -192,11 +192,40 @@ The filesystem backend is currently operating in: `{cwd}`
 
 """  # noqa: E501
 
+    # Build integrations section based on configured services
+    integrations_section = ""
+    integration_lines: list[str] = []
+    if settings.has_jira:
+        integration_lines.append(
+            f"- **JIRA** is configured at `{settings.jira_url}`."
+            " Use the `jira_search`, `jira_get_issue`, and other"
+            " `jira_*` tools for any JIRA URLs or issue references."
+            " Do NOT use `fetch_url` for JIRA URLs."
+        )
+    if settings.has_confluence:
+        integration_lines.append(
+            f"- **Confluence** is configured at"
+            f" `{settings.confluence_url}`."
+            " Use `confluence_get_page`, `confluence_search`, and"
+            " other `confluence_*` tools for any Confluence URLs."
+            " When given a Confluence URL with `pageId=<id>`,"
+            " extract the page ID and use"
+            ' `confluence_get_page(page_id="<id>")`.'
+            " Do NOT use `fetch_url` for Confluence URLs."
+        )
+    if integration_lines:
+        integrations_section = (
+            "### Configured Integrations\n\n"
+            + "\n".join(integration_lines)
+            + "\n\n"
+        )
+
     return (
         base_instructions
         + "\n\n---\n\n"
         + model_identity_section
         + working_dir_section
+        + integrations_section
         + f"""### Skills Directory
 
 Your skills are stored at: `{agent_dir_path}/skills/`

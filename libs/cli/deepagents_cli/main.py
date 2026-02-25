@@ -422,6 +422,35 @@ async def run_textual_cli_async(
         tools: list[Callable[..., Any] | dict[str, Any]] = [http_request, fetch_url]
         if settings.has_tavily:
             tools.append(web_search)
+        from deepagents_cli.jira_tools import (
+            jira_add_comment,
+            jira_configure,
+            jira_create_issue,
+            jira_get_issue,
+            jira_search,
+            jira_transition_issue,
+            jira_update_issue,
+        )
+
+        tools.extend([
+            jira_configure, jira_search, jira_get_issue,
+            jira_create_issue, jira_update_issue,
+            jira_add_comment, jira_transition_issue,
+        ])
+
+        from deepagents_cli.confluence_tools import (
+            confluence_configure,
+            confluence_create_page,
+            confluence_get_page,
+            confluence_search,
+            confluence_update_page,
+        )
+
+        tools.extend([
+            confluence_configure, confluence_search,
+            confluence_get_page, confluence_create_page,
+            confluence_update_page,
+        ])
 
         # Handle sandbox mode
         sandbox_backend = None

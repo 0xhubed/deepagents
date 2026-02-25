@@ -72,9 +72,10 @@ echo Starting DeepAgents CLI...
 echo ----------------------------------------
 echo.
 
-REM Run the container
+REM Run the container (loads env vars from .env file + explicit overrides)
 docker run -it --rm ^
     -v "%WORKSPACE%:/workspace" ^
+    --env-file "%~dp0.env" ^
     -e OLLAMA_BASE_URL=%OLLAMA_BASE_URL% ^
     -e OLLAMA_MODEL=%OLLAMA_MODEL% ^
     -w /workspace ^

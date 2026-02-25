@@ -118,7 +118,7 @@ class WelcomeBanner(Static):
                 banner.append(f"Thread: {self._cli_thread_id}\n", style="dim")
 
         banner.append(
-            "Ready to code! What would you like to build?\n", style=COLORS["primary"]
+            "How can i help you?\n", style=COLORS["primary"]
         )
         bullet = get_glyphs().bullet
         banner.append(

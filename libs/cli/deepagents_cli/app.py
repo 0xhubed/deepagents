@@ -339,7 +339,7 @@ List what you captured and where you stored it:
 class DeepAgentsApp(App):
     """Main Textual application for deepagents-cli."""
 
-    TITLE = "Deep Agents"
+    TITLE = "Leonteq Agent"
     CSS_PATH = "app.tcss"
     ENABLE_COMMAND_PALETTE = False
 
