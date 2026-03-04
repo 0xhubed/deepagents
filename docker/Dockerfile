@@ -24,7 +24,7 @@ COPY libs/deepagents /tmp/deepagents
 COPY libs/cli /tmp/deepagents-cli
 
 RUN pip install /tmp/deepagents && \
-    pip install /tmp/deepagents-cli && \
+    pip install "/tmp/deepagents-cli[ollama]" && \
     rm -rf /tmp/deepagents /tmp/deepagents-cli
 
 # Install additional utilities

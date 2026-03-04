@@ -1092,7 +1092,6 @@ def _get_default_model_spec() -> str:
 
     Checks in order:
 
-<<<<<<< HEAD
     1. `[models].default` in config file (user's intentional preference).
     2. `[models].recent` in config file (last `/model` switch).
     3. Auto-detection based on available API credentials.
@@ -1110,6 +1109,9 @@ def _get_default_model_spec() -> str:
     if config.recent_model:
         return config.recent_model
 
+    if settings.has_ollama:
+        model = os.environ.get("OLLAMA_MODEL", "llama3")
+        return f"ollama:{model}"
     if settings.has_openai:
         model = os.environ.get("OPENAI_MODEL", "gpt-5.2")
         return f"openai:{model}"
@@ -1126,7 +1128,7 @@ def _get_default_model_spec() -> str:
     msg = (
         "No credentials configured. Please set one of: "
         "ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, "
-        "or GOOGLE_CLOUD_PROJECT"
+        "GOOGLE_CLOUD_PROJECT, or OLLAMA_BASE_URL"
     )
     raise ModelConfigError(msg)
 
@@ -1189,112 +1191,6 @@ def _create_model_from_class(
             "must be in module.path:ClassName format"
         )
         raise ModelConfigError(msg)
-=======
-    Args:
-        model_name_override: Optional model name to use instead of environment variable.
-            Supports explicit provider prefix (e.g., "ollama:llama3", "openai:gpt-4").
-
-    Returns:
-        ChatModel instance (OpenAI, Anthropic, Google, or Ollama)
-
-    Raises:
-        SystemExit if no API key/URL is configured or model provider can't be determined
-    """
-    # Determine provider and model
-    if model_name_override:
-        # Use provided model, auto-detect provider
-        provider, model_name = _detect_provider(model_name_override)
-        if not provider:
-            console.print(
-                "[bold red]Error:[/bold red] Could not detect provider "
-                f"from model name: {model_name_override}"
-            )
-            console.print("\nSupported model name patterns:")
-            console.print("  - OpenAI: gpt-*, o1-*, o3-*")
-            console.print("  - Anthropic: claude-*")
-            console.print("  - Google: gemini-* (requires GOOGLE_API_KEY)")
-            console.print(
-                "  - VertexAI: claude-*/gemini-* (requires GOOGLE_CLOUD_PROJECT, "
-                "uses Application Default Credentials)"
-            )
-            console.print("  - Ollama: llama*, mistral*, codellama*, deepseek*, qwen*, phi*")
-            console.print("\nOr use explicit provider prefix:")
-            console.print("  - ollama:model-name  (e.g., ollama:llama3)")
-            console.print("  - openai:model-name")
-            console.print("  - anthropic:model-name")
-            console.print("  - google:model-name")
-            console.print("  - vertexai:model-name")
-            sys.exit(1)
-
-        # Check if credentials for detected provider are available
-        if provider == "openai" and not settings.has_openai:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires OPENAI_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "anthropic" and not settings.has_anthropic:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires ANTHROPIC_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "google" and not settings.has_google:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' "
-                "requires GOOGLE_API_KEY"
-            )
-            sys.exit(1)
-        elif provider == "vertexai" and not settings.has_vertex_ai:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' requires "
-                "GOOGLE_CLOUD_PROJECT to be set"
-            )
-            console.print("\nPlease set GOOGLE_CLOUD_PROJECT environment variable.")
-            console.print("Also ensure you have authenticated with:")
-            console.print("  gcloud auth application-default login")
-            sys.exit(1)
-        elif provider == "ollama" and not settings.has_ollama:
-            console.print(
-                f"[bold red]Error:[/bold red] Model '{model_name_override}' requires OLLAMA_BASE_URL"
-            )
-            console.print("\nExample:")
-            console.print("  export OLLAMA_BASE_URL=http://your-ollama-server:11434")
-            sys.exit(1)
-    # Use environment variable defaults, detect provider by API key/URL priority
-    elif settings.has_ollama:
-        # Ollama takes priority if configured (for local LLM users)
-        provider = "ollama"
-        model_name = os.environ.get("OLLAMA_MODEL", "llama3")
-    elif settings.has_openai:
-        provider = "openai"
-        model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
-    elif settings.has_anthropic:
-        provider = "anthropic"
-        model_name = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5-20250929")
-    elif settings.has_google:
-        provider = "google"
-        model_name = os.environ.get("GOOGLE_MODEL", "gemini-3-pro-preview")
-    elif settings.has_vertex_ai:
-        provider = "vertexai"
-        model_name = os.environ.get("VERTEX_AI_MODEL", "gemini-3-pro-preview")
-    else:
-        console.print("[bold red]Error:[/bold red] No API key or Ollama URL configured.")
-        console.print("\nPlease set one of the following environment variables:")
-        console.print("  - OLLAMA_BASE_URL    (for local Ollama models, e.g., http://localhost:11434)")
-        console.print("  - OPENAI_API_KEY     (for OpenAI models like gpt-5.2)")
-        console.print("  - ANTHROPIC_API_KEY  (for Claude models)")
-        console.print("  - GOOGLE_API_KEY     (for Google Gemini models)")
-        console.print(
-            "  - GOOGLE_CLOUD_PROJECT (for VertexAI models, "
-            "with Application Default Credentials)"
-        )
-        console.print("\nExample for Ollama:")
-        console.print("  export OLLAMA_BASE_URL=http://your-server:11434")
-        console.print("  export OLLAMA_MODEL=llama3  # optional, defaults to llama3")
-        console.print("\nOr add it to your .env file.")
-        sys.exit(1)
->>>>>>> 4819456 (feat: add Ollama support and Docker setup for Windows)
 
     module_path, class_name = class_path.rsplit(":", 1)
 
@@ -1455,17 +1351,7 @@ def create_model(
                 f"Invalid model spec '{model_spec}': model name is required "
                 "(e.g., 'anthropic:claude-sonnet-4-5' or 'claude-sonnet-4-5')"
             )
-<<<<<<< HEAD
             raise ModelConfigError(msg)
-=======
-    elif provider == "ollama":
-        from langchain_ollama import ChatOllama
-
-        model = ChatOllama(
-            model=model_name,
-            base_url=settings.ollama_base_url,
-        )
->>>>>>> 4819456 (feat: add Ollama support and Docker setup for Windows)
     else:
         # Bare model name — auto-detect provider or let init_chat_model infer
         model_name = model_spec
